@@ -1,5 +1,5 @@
 from typing import List
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 from core.domain.search_result import SearchResult
 from core.ports.search_engine import SearchEnginePort
 
