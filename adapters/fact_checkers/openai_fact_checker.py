@@ -19,24 +19,33 @@ class OpenAIFactChecker(FactCheckerPort):
         self.model = model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
         self.client = OpenAI(api_key=api_key)
 
-    def check(self, article: Article) -> FactCheckResult:
-        # Limita para não gastar créditos excessivos se o texto for gigante
-        texto_limitado = article.text[:10000]
+    def check(self, article: Article, search_results: list = None) -> FactCheckResult:
+        texto_limitado = article.text[:8000]
+
+        # Formata o resumo das buscas na web para entregar à OpenAI
+        contexto_busca = ""
+        if search_results:
+            contexto_busca = "EVIDÊNCIAS E NOTÍCIAS ENCONTRADAS NA WEB EM TEMPO REAL:\n"
+            for res in search_results:
+                contexto_busca += f"- Título: {res.title}\n  Fonte: {res.url}\n  Trecho: {res.snippet}\n\n"
 
         prompt_sistema = (
-            "Você é um jornalista investigativo sênior e especialista em checagem de fatos (fact-checking). "
-            "Sua tarefa é analisar criticamente o texto fornecido. "
-            "Identifique sensacionalismo, alegações extraordinárias sem comprovação e coerência das informações. "
-            "Se o assunto exigir dados posteriores ao seu conhecimento ou faltarem evidências, classifique como 'Inconclusivo'."
+            "Você é um jornalista investigativo sênior de fact-checking. "
+            "Sua missão é verificar a veracidade da matéria fornecida. "
+            "IMPORTANTE: Você recebeu EVIDÊNCIAS RECENTES encontradas na web em tempo real. "
+            "Cruze a matéria do usuário com essas evidências. Se outros veículos confiáveis "
+            "noticiaram o mesmo fato recentemente, confirme como 'Verdadeiro'. "
+            "Cite as fontes encontradas na sua justificativa."
         )
 
         prompt_usuario = (
-            f"Título da Matéria: {article.title}\n"
+            f"Matéria a ser checada:\n"
+            f"Título: {article.title}\n"
             f"Autor citado: {article.author or 'Não informado'}\n"
-            f"Conteúdo:\n{texto_limitado}"
+            f"Texto:\n{texto_limitado}\n\n"
+            f"{contexto_busca}"
         )
 
-        # Chama a OpenAI forçando a resposta vir preenchida no modelo FactCheckResult
         completion = self.client.beta.chat.completions.parse(
             model=self.model,
             messages=[
