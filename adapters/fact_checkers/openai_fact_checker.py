@@ -6,17 +6,34 @@ from core.domain.article import Article
 from core.domain.fact_check_result import FactCheckResult
 from core.ports.fact_checker import FactCheckerPort
 
-# Carrega as variáveis do arquivo .env
+# Carrega as variáveis do arquivo .env local (se existir)
 load_dotenv()
 
 class OpenAIFactChecker(FactCheckerPort):
     def __init__(self, model: str = None):
+        # 1. Tenta pegar do ambiente (.env ou SO)
         api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key or api_key == "sua_chave_aqui":
-            raise ValueError("Chave OPENAI_API_KEY não foi configurada no arquivo .env!")
 
-        # Lê o modelo que você acabou de colocar no .env!
-        self.model = model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        # 2. Se não encontrar, tenta pegar dos Secrets do Streamlit Cloud
+        if not api_key:
+            try:
+                import streamlit as st
+                api_key = st.secrets.get("OPENAI_API_KEY")
+            except Exception:
+                pass
+
+        if not api_key or api_key == "sua_chave_aqui":
+            raise ValueError("Chave OPENAI_API_KEY não foi configurada no arquivo .env nem nos Secrets do Streamlit!")
+
+        # Lê o modelo (.env ou Secrets do Streamlit)
+        model_secret = None
+        try:
+            import streamlit as st
+            model_secret = st.secrets.get("OPENAI_MODEL")
+        except Exception:
+            pass
+
+        self.model = model or os.getenv("OPENAI_MODEL") or model_secret or "gpt-4o-mini"
         self.client = OpenAI(api_key=api_key)
 
     def check(self, article: Article, search_results: list = None) -> FactCheckResult:
