@@ -1,5 +1,3 @@
-from turtle import title
-from importlib.metadata import metadata
 from urllib.parse import urlparse
 import trafilatura
 from core.domain.article import Article
@@ -28,7 +26,7 @@ class TrafilaturaExtractor(ArticleExtractorPort):
 
         return Article(url=url, title=title, text=text, author=author)
 
-    def _validate_url(self, url:str) -> None:
+    def _validate_url(self, url: str) -> None:
         """Segurança: valida formato e evita esquemas perigosos (ex: file://, localhost)."""
         parsed = urlparse(url)
         if parsed.scheme not in ("http", "https"):
